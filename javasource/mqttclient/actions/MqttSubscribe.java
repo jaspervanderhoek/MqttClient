@@ -9,11 +9,15 @@
 
 package mqttclient.actions;
 
+import java.util.List;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.mendix.core.Core;
-import com.mendix.logging.ILogNode;
+import com.mendix.core.CoreException;
 import com.mendix.systemwideinterfaces.core.IContext;
+import com.mendix.systemwideinterfaces.core.IMendixObject;
 import com.mendix.webui.CustomJavaAction;
 import mqttclient.impl.MqttConnector;
+import mqttclient.proxies.Subscription;
 
 public class MqttSubscribe extends CustomJavaAction<java.lang.Boolean>
 {
@@ -55,8 +59,32 @@ public class MqttSubscribe extends CustomJavaAction<java.lang.Boolean>
 		// BEGIN USER CODE
         try {
             MqttConnector.subscribe(this.BrokerHost, this.BrokerPort, this.BrokerOrganisation, this.TopicName, this.OnMessageMicroflow, this.CA, this.ClientCertificate, this.ClientKey, this.CertificatePassword, this.Username, this.Password, this.QoS, this.Timeout);
+           
+            // Creating the subscription object
+            IMendixObject subscriptionObjAvailable = MqttConnector.checkSubscriptionObj(context() , this.BrokerHost, this.BrokerPort, this.TopicName);
+        	if (subscriptionObjAvailable == null)
+        	{
+			  Subscription newSubscriptionObj = new Subscription(context());
+			  newSubscriptionObj.setHost(this.BrokerHost);
+			  newSubscriptionObj.setPort(this.BrokerPort);
+			  newSubscriptionObj.setTopicName(this.TopicName);
+			  newSubscriptionObj.setOnMessageMicroflow(this.OnMessageMicroflow);
+			  newSubscriptionObj.commit();
+        	}
+        	else 
+        	{
+        		// Updating the subscription object
+        		Subscription subscriptionObj = mqttclient.proxies.Subscription.initialize(getContext(), subscriptionObjAvailable);
+        		String oldOnMsgMf = subscriptionObj.getOnMessageMicroflow();
+        		if (!(oldOnMsgMf.equals(this.OnMessageMicroflow)))
+        		{
+        			subscriptionObj.setOnMessageMicroflow(this.OnMessageMicroflow);
+        			subscriptionObj.commit();
+        		}
+        	}
             return true;
         } catch (Exception e) {
+        	Core.getLogger("MqttConnector").error(ExceptionUtils.getStackTrace(e));
             return false;
         }
 		// END USER CODE

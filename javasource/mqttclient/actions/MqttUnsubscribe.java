@@ -9,9 +9,13 @@
 
 package mqttclient.actions;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import com.mendix.core.Core;
 import com.mendix.systemwideinterfaces.core.IContext;
+import com.mendix.systemwideinterfaces.core.IMendixObject;
 import com.mendix.webui.CustomJavaAction;
 import mqttclient.impl.MqttConnector;
+import mqttclient.proxies.Subscription;
 
 /**
  * 
@@ -42,8 +46,17 @@ public class MqttUnsubscribe extends CustomJavaAction<java.lang.Boolean>
 		// BEGIN USER CODE
 		try {
 			MqttConnector.unsubscribe(this.BrokerHost, this.BrokerPort, this.BrokerOrganisation, this.TopicName, this.Username);
+			
+			// Deleting the subscription object
+			IMendixObject subscriptionObjAvailable = MqttConnector.checkSubscriptionObj(context() , this.BrokerHost, this.BrokerPort, this.TopicName);
+			if (subscriptionObjAvailable != null)
+        	{
+				Subscription subscriptionObj = mqttclient.proxies.Subscription.initialize(getContext(), subscriptionObjAvailable);
+				subscriptionObj.delete(getContext());
+        	}
 			return true;
 		} catch (Exception e) {
+			Core.getLogger("MqttConnector").error(ExceptionUtils.getStackTrace(e));
 			return false;
 		}
 		// END USER CODE

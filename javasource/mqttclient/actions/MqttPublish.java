@@ -9,6 +9,7 @@
 
 package mqttclient.actions;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.mendix.core.Core;
 import com.mendix.systemwideinterfaces.core.IContext;
 import com.mendix.webui.CustomJavaAction;
@@ -56,6 +57,7 @@ public class MqttPublish extends CustomJavaAction<java.lang.Boolean>
         	MqttConnector.publish(this.BrokerHost, this.BrokerPort, this.BrokerOrganisation,this.TopicName, this.Payload, this.CA, this.ClientCertificate, this.ClientKey, this.CertificatePassword, this.Username, this.Password, this.QoS, this.Timeout);
             return true;
         } catch (Exception e) {
+        	Core.getLogger("MqttConnector").error(ExceptionUtils.getStackTrace(e));
             return false;
         }
 		// END USER CODE
