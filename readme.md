@@ -156,14 +156,14 @@ included in the connector mpk.
 [16]: docs/images/IBMApps.png
 [17]: https://mosquitto.org/man/mqtt-7.html#idm72
 [18]: https://www.eclipse.org/legal/epl-2.0/
-[19]: /docs/images/Broker_Configuration.png
-[20]: docs/images/Broker_Configuration2.png
-[21]: docs/images/Mqtt_Configuration.png
-[22]: docs/images/Mqtt_Subscribe.png
-[23]: docs/images/ProcessPayloadMessage_Microflow.png
-[24]: docs/images/Mqtt_Unsubscribe.png
-[25]: docs/images/Mqtt_Publish.png
-[26]: docs/images/Mqtt_Overview.png
+[19]: /docs/images/Broker_Configuration.PNG
+[20]: docs/images/Broker_Configuration2.PNG
+[21]: docs/images/Mqtt_Configuration.PNG
+[22]: docs/images/Mqtt_Subscribe.PNG
+[23]: docs/images/ProcessPayloadMessage_Microflow.PNG
+[24]: docs/images/Mqtt_Unsubscribe.PNG
+[25]: docs/images/Mqtt_Publish.PNG
+[26]: docs/images/Mqtt_Overview.PNG
 
 
 
