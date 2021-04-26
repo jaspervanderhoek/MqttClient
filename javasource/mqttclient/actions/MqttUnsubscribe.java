@@ -24,36 +24,23 @@ import mqttclient.proxies.Subscription;
  */
 public class MqttUnsubscribe extends CustomJavaAction<java.lang.Boolean>
 {
-	private java.lang.String BrokerHost;
-	private java.lang.Long BrokerPort;
-	private java.lang.String BrokerOrganisation;
-	private java.lang.String Username;
-	private java.lang.String TopicName;
+	private IMendixObject __MqttConfigObject;
+	private mqttclient.proxies.MqttConfig MqttConfigObject;
 
-	public MqttUnsubscribe(IContext context, java.lang.String BrokerHost, java.lang.Long BrokerPort, java.lang.String BrokerOrganisation, java.lang.String Username, java.lang.String TopicName)
+	public MqttUnsubscribe(IContext context, IMendixObject MqttConfigObject)
 	{
 		super(context);
-		this.BrokerHost = BrokerHost;
-		this.BrokerPort = BrokerPort;
-		this.BrokerOrganisation = BrokerOrganisation;
-		this.Username = Username;
-		this.TopicName = TopicName;
+		this.__MqttConfigObject = MqttConfigObject;
 	}
 
 	@java.lang.Override
 	public java.lang.Boolean executeAction() throws Exception
 	{
+		this.MqttConfigObject = __MqttConfigObject == null ? null : mqttclient.proxies.MqttConfig.initialize(getContext(), __MqttConfigObject);
+
 		// BEGIN USER CODE
 		try {
-			MqttConnector.unsubscribe(this.BrokerHost, this.BrokerPort, this.BrokerOrganisation, this.TopicName, this.Username);
-			
-			// Deleting the subscription object
-			IMendixObject subscriptionObjAvailable = MqttConnector.checkSubscriptionObj(context() , this.BrokerHost, this.BrokerPort, this.TopicName);
-			if (subscriptionObjAvailable != null)
-        	{
-				Subscription subscriptionObj = mqttclient.proxies.Subscription.initialize(getContext(), subscriptionObjAvailable);
-				subscriptionObj.delete(getContext());
-        	}
+			MqttConnector.unsubscribe(this.MqttConfigObject, this.MqttConfigObject.getMqttConfig_BrokerConfig());
 			return true;
 		} catch (Exception e) {
 			Core.getLogger("MqttConnector").error(ExceptionUtils.getStackTrace(e));

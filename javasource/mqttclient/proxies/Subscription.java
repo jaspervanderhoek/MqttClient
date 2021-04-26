@@ -4,6 +4,9 @@
 
 package mqttclient.proxies;
 
+/**
+ * Entity that is responsible to store the onmessage microflow information for the mqtt configuration.
+ */
 public class Subscription
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject subscriptionMendixObject;
@@ -20,10 +23,8 @@ public class Subscription
 	 */
 	public enum MemberNames
 	{
-		Host("Host"),
-		Port("Port"),
-		TopicName("TopicName"),
-		OnMessageMicroflow("OnMessageMicroflow");
+		OnMessageMicroflow("OnMessageMicroflow"),
+		MqttConfig_Subscription("MqttClient.MqttConfig_Subscription");
 
 		private java.lang.String metaName;
 
@@ -119,114 +120,6 @@ public class Subscription
 		com.mendix.core.Core.delete(context, getMendixObject());
 	}
 	/**
-	 * @return value of Host
-	 */
-	public final java.lang.String getHost()
-	{
-		return getHost(getContext());
-	}
-
-	/**
-	 * @param context
-	 * @return value of Host
-	 */
-	public final java.lang.String getHost(com.mendix.systemwideinterfaces.core.IContext context)
-	{
-		return (java.lang.String) getMendixObject().getValue(context, MemberNames.Host.toString());
-	}
-
-	/**
-	 * Set value of Host
-	 * @param host
-	 */
-	public final void setHost(java.lang.String host)
-	{
-		setHost(getContext(), host);
-	}
-
-	/**
-	 * Set value of Host
-	 * @param context
-	 * @param host
-	 */
-	public final void setHost(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String host)
-	{
-		getMendixObject().setValue(context, MemberNames.Host.toString(), host);
-	}
-
-	/**
-	 * @return value of Port
-	 */
-	public final java.lang.Long getPort()
-	{
-		return getPort(getContext());
-	}
-
-	/**
-	 * @param context
-	 * @return value of Port
-	 */
-	public final java.lang.Long getPort(com.mendix.systemwideinterfaces.core.IContext context)
-	{
-		return (java.lang.Long) getMendixObject().getValue(context, MemberNames.Port.toString());
-	}
-
-	/**
-	 * Set value of Port
-	 * @param port
-	 */
-	public final void setPort(java.lang.Long port)
-	{
-		setPort(getContext(), port);
-	}
-
-	/**
-	 * Set value of Port
-	 * @param context
-	 * @param port
-	 */
-	public final void setPort(com.mendix.systemwideinterfaces.core.IContext context, java.lang.Long port)
-	{
-		getMendixObject().setValue(context, MemberNames.Port.toString(), port);
-	}
-
-	/**
-	 * @return value of TopicName
-	 */
-	public final java.lang.String getTopicName()
-	{
-		return getTopicName(getContext());
-	}
-
-	/**
-	 * @param context
-	 * @return value of TopicName
-	 */
-	public final java.lang.String getTopicName(com.mendix.systemwideinterfaces.core.IContext context)
-	{
-		return (java.lang.String) getMendixObject().getValue(context, MemberNames.TopicName.toString());
-	}
-
-	/**
-	 * Set value of TopicName
-	 * @param topicname
-	 */
-	public final void setTopicName(java.lang.String topicname)
-	{
-		setTopicName(getContext(), topicname);
-	}
-
-	/**
-	 * Set value of TopicName
-	 * @param context
-	 * @param topicname
-	 */
-	public final void setTopicName(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String topicname)
-	{
-		getMendixObject().setValue(context, MemberNames.TopicName.toString(), topicname);
-	}
-
-	/**
 	 * @return value of OnMessageMicroflow
 	 */
 	public final java.lang.String getOnMessageMicroflow()
@@ -260,6 +153,49 @@ public class Subscription
 	public final void setOnMessageMicroflow(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String onmessagemicroflow)
 	{
 		getMendixObject().setValue(context, MemberNames.OnMessageMicroflow.toString(), onmessagemicroflow);
+	}
+
+	/**
+	 * @return value of MqttConfig_Subscription
+	 */
+	public final mqttclient.proxies.MqttConfig getMqttConfig_Subscription() throws com.mendix.core.CoreException
+	{
+		return getMqttConfig_Subscription(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of MqttConfig_Subscription
+	 */
+	public final mqttclient.proxies.MqttConfig getMqttConfig_Subscription(com.mendix.systemwideinterfaces.core.IContext context) throws com.mendix.core.CoreException
+	{
+		mqttclient.proxies.MqttConfig result = null;
+		com.mendix.systemwideinterfaces.core.IMendixIdentifier identifier = getMendixObject().getValue(context, MemberNames.MqttConfig_Subscription.toString());
+		if (identifier != null)
+			result = mqttclient.proxies.MqttConfig.load(context, identifier);
+		return result;
+	}
+
+	/**
+	 * Set value of MqttConfig_Subscription
+	 * @param mqttconfig_subscription
+	 */
+	public final void setMqttConfig_Subscription(mqttclient.proxies.MqttConfig mqttconfig_subscription)
+	{
+		setMqttConfig_Subscription(getContext(), mqttconfig_subscription);
+	}
+
+	/**
+	 * Set value of MqttConfig_Subscription
+	 * @param context
+	 * @param mqttconfig_subscription
+	 */
+	public final void setMqttConfig_Subscription(com.mendix.systemwideinterfaces.core.IContext context, mqttclient.proxies.MqttConfig mqttconfig_subscription)
+	{
+		if (mqttconfig_subscription == null)
+			getMendixObject().setValue(context, MemberNames.MqttConfig_Subscription.toString(), null);
+		else
+			getMendixObject().setValue(context, MemberNames.MqttConfig_Subscription.toString(), mqttconfig_subscription.getMendixObject().getId());
 	}
 
 	/**

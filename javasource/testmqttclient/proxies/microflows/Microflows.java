@@ -49,44 +49,52 @@ public class Microflows
 		params.put("Topic", _topic);
 		Core.microflowCall("TestMqttClient.OnTopic2Message").withParams(params).execute(context);
 	}
-	public static boolean test_AwsIotSubscribe(IContext context)
+	public static boolean test_AwsIotSubscribe(IContext context, mqttclient.proxies.MqttConfig _mqttConfig)
 	{
 		Map<java.lang.String, Object> params = new HashMap<>();
+		params.put("MqttConfig", _mqttConfig == null ? null : _mqttConfig.getMendixObject());
 		return (java.lang.Boolean) Core.microflowCall("TestMqttClient.Test_AwsIotSubscribe").withParams(params).execute(context);
 	}
-	public static boolean test_IBMPublish(IContext context)
+	public static boolean test_IBMPublish(IContext context, mqttclient.proxies.MqttConfig _mqttConfig)
 	{
 		Map<java.lang.String, Object> params = new HashMap<>();
+		params.put("MqttConfig", _mqttConfig == null ? null : _mqttConfig.getMendixObject());
 		return (java.lang.Boolean) Core.microflowCall("TestMqttClient.Test_IBMPublish").withParams(params).execute(context);
 	}
-	public static boolean test_IBMSubscribe(IContext context)
+	public static boolean test_IBMSubscribe(IContext context, mqttclient.proxies.MqttConfig _mqttConfig)
 	{
 		Map<java.lang.String, Object> params = new HashMap<>();
+		params.put("MqttConfig", _mqttConfig == null ? null : _mqttConfig.getMendixObject());
 		return (java.lang.Boolean) Core.microflowCall("TestMqttClient.Test_IBMSubscribe").withParams(params).execute(context);
 	}
-	public static boolean test_SubscribeMosquittoTopics_BBCSubtitles(IContext context)
+	public static boolean test_SubscribeMosquittoTopics_BBCSubtitles(IContext context, mqttclient.proxies.MqttConfig _mqttConfig)
 	{
 		Map<java.lang.String, Object> params = new HashMap<>();
+		params.put("MqttConfig", _mqttConfig == null ? null : _mqttConfig.getMendixObject());
 		return (java.lang.Boolean) Core.microflowCall("TestMqttClient.Test_SubscribeMosquittoTopics_BBCSubtitles").withParams(params).execute(context);
 	}
-	public static boolean test_SubscribeTwoMosquittoImportTopics(IContext context)
+	public static boolean test_SubscribeTwoMosquittoImportTopics(IContext context, mqttclient.proxies.MqttConfig _mqttConfig)
 	{
 		Map<java.lang.String, Object> params = new HashMap<>();
+		params.put("MqttConfig", _mqttConfig == null ? null : _mqttConfig.getMendixObject());
 		return (java.lang.Boolean) Core.microflowCall("TestMqttClient.Test_SubscribeTwoMosquittoImportTopics").withParams(params).execute(context);
 	}
-	public static boolean test_ThinkSpeakPublish(IContext context)
+	public static boolean test_ThinkSpeakPublish(IContext context, mqttclient.proxies.MqttConfig _mqttConfig)
 	{
 		Map<java.lang.String, Object> params = new HashMap<>();
+		params.put("MqttConfig", _mqttConfig == null ? null : _mqttConfig.getMendixObject());
 		return (java.lang.Boolean) Core.microflowCall("TestMqttClient.Test_ThinkSpeakPublish").withParams(params).execute(context);
 	}
-	public static boolean test_ThinkSpeakSubscribe(IContext context)
+	public static boolean test_ThinkSpeakSubscribe(IContext context, mqttclient.proxies.MqttConfig _mqttConfig)
 	{
 		Map<java.lang.String, Object> params = new HashMap<>();
+		params.put("MqttConfig", _mqttConfig == null ? null : _mqttConfig.getMendixObject());
 		return (java.lang.Boolean) Core.microflowCall("TestMqttClient.Test_ThinkSpeakSubscribe").withParams(params).execute(context);
 	}
-	public static boolean test_TTNSubscribe(IContext context)
+	public static boolean test_TTNSubscribe(IContext context, mqttclient.proxies.MqttConfig _mqttConfig)
 	{
 		Map<java.lang.String, Object> params = new HashMap<>();
+		params.put("MqttConfig", _mqttConfig == null ? null : _mqttConfig.getMendixObject());
 		return (java.lang.Boolean) Core.microflowCall("TestMqttClient.Test_TTNSubscribe").withParams(params).execute(context);
 	}
 }

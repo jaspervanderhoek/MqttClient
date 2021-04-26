@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -14,329 +13,434 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
+import com.google.common.base.Strings;
 import com.mendix.core.Core;
 import com.mendix.core.CoreException;
 import com.mendix.logging.ILogNode;
-import com.mendix.systemwideinterfaces.core.IContext;
+import com.mendix.systemwideinterfaces.MendixRuntimeException;
 import com.mendix.systemwideinterfaces.core.IDataType;
-import com.mendix.systemwideinterfaces.core.IMendixObject;
 
-import mqttclient.impl.MqttConnector.MqttConnection;
+
+import mqttclient.proxies.BrokerConfig;
 import mqttclient.proxies.Enum_PubOrSub;
+import mqttclient.proxies.MqttConfig;
+import mqttclient.proxies.qos;
+import objecthandling.XPath;
 
 /**
  * Created by ako on 1/9/2016.
  */
 public class MqttConnector {
-	private static Map<String, MqttConnection> mqttHandlers = new HashMap<String, MqttConnection>();
-	protected static ILogNode logger = Core.getLogger("MqttConnector");
+    private static Map<String, MqttConnection> mqttHandlers = new HashMap<>();
+    public static ILogNode logger = Core.getLogger("MqttConnector");
+    //private static MqttConfig mqttConfig;
 
-	public MqttConnector() { }
-
-
-	public static void subscribe(String brokerHost, Long brokerPort, String brokerOrganisation, String topicName, String onMessageMicroflow, String CA, String ClientCertificate, String ClientKey, String CertificatePassword, String username, String password, mqttclient.proxies.qos QoS, long timeout) throws Exception {
-		MqttConnection connection = getMqttConnection(brokerHost, brokerPort, brokerOrganisation, CA, ClientCertificate, ClientKey, CertificatePassword, username, password, timeout, topicName, Enum_PubOrSub.Subscribe);
-		connection.subscribe(topicName, onMessageMicroflow, QoS);
-	}
-
-	public static void unsubscribe(String brokerHost, Long brokerPort, String brokerOrganisation, String topicName, String username) throws Exception {
-		MqttConnection connection = getMqttConnection(brokerHost, brokerPort, brokerOrganisation, null, null, null, null, username, null,0, topicName, null);
-		connection.unsubscribe(topicName);
-	}
-
-	public static void publish(String brokerHost, Long brokerPort, String brokerOrganisation, String topicName, String message, String CA, String ClientCertificate, String ClientKey, String CertificatePassword, String username, String password, mqttclient.proxies.qos QoS, long timeout) throws Exception {
-		MqttConnection connection = getMqttConnection(brokerHost, brokerPort, brokerOrganisation, CA, ClientCertificate, ClientKey, CertificatePassword, username, password, timeout, topicName, Enum_PubOrSub.Subscribe);
-		connection.publish(topicName, message, QoS);
-	}
-
-	public void deleteClientObject(String brokerHost, Long brokerPort, String username, String topicName, Enum_PubOrSub pubOrSub) throws Exception {
-
-		String key = getKeyForMqttConfig(brokerHost, brokerPort,  username,  topicName,  pubOrSub);
-		MqttConnection handler;
-		synchronized (mqttHandlers) {
-
-			logger.info("Number of objects in mqttHandlers map before removal: " + mqttHandlers.size());
-
-			if (mqttHandlers.containsKey(key)) {
-				logger.info("Removing the connection");
-				try {
-
-					handler = mqttHandlers.get(key);
-
-					//Disconnect the Client and Close.
-					if(handler.client.isConnected())
-						handler.client.disconnect();
-
-					handler.client.close(true);
-					mqttHandlers.remove(key);
-
-				} catch (Exception e) {
-					logger.error(e);
-					throw e;
-				}
-
-			} 
-			logger.info("Number of objects in mqttHandlers map after removal: " + mqttHandlers.size());
-		}
-	}
-
-	public static String getKeyForMqttConfig (String brokerHost, Long brokerPort, String username, String topicName, 
-			Enum_PubOrSub pubOrSub) {
-		return brokerHost + "|" + brokerPort + "|" + username + "|" + topicName + "|" + pubOrSub.getCaption();
-	}
-
-	private static MqttConnection getMqttConnection(String brokerHost, Long brokerPort, String brokerOrganisation, String CA, String ClientCertificate,
-			String ClientKey, String CertificatePassword, String username, String password, long timeout,
-						String topicName, Enum_PubOrSub pubOrSub) throws Exception {
-		String key = formatBrokerId(brokerHost, brokerPort, topicName, username);
-		MqttConnection handler;
-		synchronized (mqttHandlers) {
-			logger.trace("Number of active MQTT Connections: " + mqttHandlers.size());
-
-			if (!mqttHandlers.containsKey(key)) {
-				logger.info("Creating new MqttConnection to: " + formatBrokerId(brokerHost, brokerPort, topicName, username));
-
-				try {
-					handler = new MqttConnection(brokerHost, brokerPort, brokerOrganisation, CA, ClientCertificate, ClientKey, CertificatePassword, username, password, timeout, topicName, pubOrSub);
-					mqttHandlers.put(key, handler);
-				} catch (Exception e) {
-					logger.error("Unable to create an MQTT Connection to: "+ formatBrokerId(brokerHost, brokerPort, topicName, username), e);
-					throw e;
-				}
-
-			} else {
-				logger.info("Found existing MqttConnection for: " + formatBrokerId(brokerHost, brokerPort, topicName, username));
-				handler = mqttHandlers.get(key);
-			}
-			logger.debug("Number of active MQTT Connections: " + mqttHandlers.size());
-		}
-
-		return handler;
-	}
+    private MqttConnector() { }
 
 
+    public static void subscribe(MqttConfig mqttConfig, BrokerConfig brokerConfig, String onMessageMicroflow) throws Exception {
+        MqttConnection connection = getMqttConnection(brokerConfig);
+        connection.subscribe(mqttConfig.getTopicName(), onMessageMicroflow, mqttConfig.getQos());
+    }
 
-	protected static class MqttConnection {
-		private MqttClient client;
-		private HashMap<String, MqttSubscription> subscriptions = new HashMap<>();
-		private String brokerKey;
-		private MqttConnectOptions connectionOpts;
+    public static void unsubscribe(MqttConfig mqttConfig, BrokerConfig brokerConfig) throws Exception {
+        MqttConnection connection = getMqttConnection(brokerConfig);
+        connection.unsubscribe(mqttConfig.getTopicName());
+    }
 
-		public MqttConnection(String brokerHost,  Long brokerPort, String brokerOrganisation, String CA, String ClientCertificate, 
-				String ClientKey, String CertificatePassword, String username, String password, long connectionTimeout,
-				String topicName, Enum_PubOrSub pubOrSub) throws Exception {
-			this.brokerKey = formatBrokerId(brokerHost, brokerPort, topicName, username);
+    public static void publish(MqttConfig mqttConfig, BrokerConfig brokerConfig, String payload) throws Exception {
+        MqttConnection connection = getMqttConnection(brokerConfig);
+        connection.publish(mqttConfig.getTopicName(), payload, mqttConfig.getQos());
+    }
 
-			boolean useSsl = (ClientCertificate != null && !ClientCertificate.equals(""));
-			MqttConnectOptions connOpts = new MqttConnectOptions();
-			connOpts.setCleanSession(false);
-			connOpts.setAutomaticReconnect(true);
-			if(connectionTimeout != 0)
-				connOpts.setConnectionTimeout(Math.toIntExact(connectionTimeout));
-			else
-				connOpts.setConnectionTimeout(60);
-			connOpts.setKeepAliveInterval(60);
+    public static void deleteConnection(BrokerConfig brokerConfig) throws Exception {
 
-			String brokerURL = "", clientId = "";
-			if(brokerOrganisation != null && !brokerOrganisation.equals("")){
-				brokerURL = String.format("tcp://%1s.%2s:%d",brokerOrganisation, brokerHost, brokerPort);
-			}
-			else{
-				brokerURL = String.format("tcp://%s:%d", brokerHost, brokerPort);
-			}
+        String key = getKeyForBrokerConfig(brokerConfig);
+        MqttConnection handler = null;
 
-			String key = getKeyForMqttConfig(brokerHost, brokerPort,  username,  topicName,  pubOrSub);
+        synchronized (mqttHandlers) {
 
-			clientId = Base64.getEncoder().encodeToString(key.getBytes());
-			logger.debug("Assigned MQTT Connection client id " + clientId + " to: " + formatBrokerId(brokerHost, brokerPort, topicName, username));
+            MqttConnector.logger.info("Number of objects in mqttHandlers map before removal: " + mqttHandlers.size());
 
+            if (mqttHandlers.containsKey(key)) {
+                MqttConnector.logger.info("Removing the connection");
+                try {
 
+                    handler = mqttHandlers.get(key);
 
-			if (username != null && !"".equals(username.trim())) {
-				connOpts.setUserName(username);
-			}
-			if (password != null && !"".equals(password.trim())) {
-				connOpts.setPassword(password.toCharArray());
-			}
+                    //Disconnect the Client and Close.
+                    if(handler.client.isConnected())
+                        handler.client.disconnect();
 
-			if (useSsl) {
-				brokerURL = String.format("ssl://%s:%d", brokerHost, brokerPort);
-				connOpts.setCleanSession(false);
+                    handler.client.close(true);
+                    mqttHandlers.remove(key);
 
-				try {
-					String resourcesPath = null;
-					try {
-						resourcesPath = Core.getConfiguration().getResourcesPath().getPath();
-						resourcesPath += File.separator;
+                } catch (Exception e) {
+                    logger.error(e);
+                    throw e;
+                }
 
-					} catch (Exception e) {
-						resourcesPath = "";
-					}
-					connOpts.setSocketFactory(SslUtil.getSslSocketFactory(
-							resourcesPath + CA,
-							resourcesPath + ClientCertificate,
-							resourcesPath + ClientKey,
-							CertificatePassword
-							));
-				} catch (Exception e) {
-					logger.error(String.format("Unable to load certificates for: " + formatBrokerId(brokerHost, brokerPort, topicName, username), brokerHost,brokerPort), e);
-					throw e;
-				}
-			}
+            } 
+            logger.info("Number of objects in mqttHandlers map after removal: " + mqttHandlers.size());
+        }
+    }
 
-			MemoryPersistence persistence = new MemoryPersistence();
-
-			try {
-				this.client = new MqttClient(brokerURL, clientId, persistence);
-				this.client.setCallback(new MxMqttCallback(this.brokerKey, this, this.subscriptions, brokerHost, brokerPort));
-
-				logger.debug("Connecting to broker: " + brokerURL);
-				IMqttToken token = this.client.connectWithResult(connOpts);
-				token.waitForCompletion(connectionTimeout);
-				logger.trace("Connected");
-			} catch (Exception e) {
-				throw e;
-			}
-		}
-
-		public void subscribe(String topic, String onMessageMicroflow, mqttclient.proxies.qos QoS) throws MqttException {
-			logger.info(String.format("Subscribe: %s", this.client.getClientId()));
-			try {
-				if(!this.client.isConnected()){
-					this.client.reconnect();
-				}
-				int subscriptionQos = 0;
-				if(QoS.equals(mqttclient.proxies.qos.At_Most_Once_0)){
-					subscriptionQos = 0;
-				}else if(QoS.equals(mqttclient.proxies.qos.At_Least_Once_1)){
-					subscriptionQos= 1;
-				}else if(QoS.equals(mqttclient.proxies.qos.Exactly_Once_2)){
-					subscriptionQos= 2;
-				}
-
-				/* Request the input parameters from the OnMessageMicroflow so we can 
-				 * validate that both 'Topic' & 'Payload' present.
-				 */
-				Map<String, IDataType> params = Core.getInputParameters(onMessageMicroflow);
-				if( !params.containsKey("Topic") && !params.containsKey("Payload") )
-					logger.warn("On Message Microflow: " + onMessageMicroflow + " is missing all required parameters [Topic & Payload]");
-				else if( !params.containsKey("Topic") )
-					logger.warn("On Message Microflow: " + onMessageMicroflow + " is missing parameter [Topic]");
-				else if( !params.containsKey("Payload") )
-					logger.warn("On Message Microflow: " + onMessageMicroflow + " is missing required parameter [Payload]");
+    public static MqttConnection getMqttConnection(BrokerConfig brokerConfig) throws Exception {
 
 
-				this.client.subscribe(topic, subscriptionQos);
-				this.subscriptions.put(topic, new MqttSubscription(topic, onMessageMicroflow, QoS));
-			} catch (Exception e) {
-				logger.error(e);
-				throw e;
-			}
+        String key = getKeyForBrokerConfig(brokerConfig);
+        String exceptionMsg = String.format("Unable to fetch connection object for the key: %s", key);
 
-		}
-		public void unsubscribe(String topicName) throws MqttException {
-			logger.info(String.format("Unsubscribe: %s, %s", topicName, this.client.getClientId()));
-			try {
-				this.subscriptions.remove(topicName);
+        synchronized (mqttHandlers) {
+            MqttConnector.logger.trace("Number of active MQTT Connections: " + mqttHandlers.size());
 
-				this.client.unsubscribe(topicName);
-			} catch (MqttException e) {
-				logger.error(e);
-				throw e;
-			}
-			finally {
-				if( this.subscriptions.size() == 0 ) { 
-					synchronized (mqttHandlers) {
-						this.client.disconnect();
-						mqttHandlers.remove(this.brokerKey);
+            if(mqttHandlers.containsKey(key))
+                return mqttHandlers.get(key);
 
-						logger.info("Closed MqttConnection after unsubscribing from the last topic. For: " + this.brokerKey);
-						logger.debug("Number of active MQTT Connections: " + mqttHandlers.size());
-					}
-				}
-			}
-		}
+            //We should not recreate connection object here, instead throw an exception since,
+            //creation of connection object happens during broker configuration. If there is no
+            //connection object at this point, then there could be an unhandled bug which needs to be
+            //fixed.
+            MqttConnector.logger.error(exceptionMsg);
+            throw new MendixRuntimeException(exceptionMsg);
+        }
 
-		public void publish(String topic, String message,mqttclient.proxies.qos QoS) throws MqttException {
-			logger.debug(String.format("Publish: %s, %s, %s", topic, message, this.client.getClientId()));
-			try {
-				if(!this.client.isConnected()){
-					this.client.reconnect();
-				}
+    }
 
-				MqttMessage payload = new MqttMessage(message.getBytes());
-				int subscriptionQos = 0;
-				if(QoS.equals(mqttclient.proxies.qos.At_Most_Once_0)){
-					subscriptionQos = 0;
-				}else if(QoS.equals(mqttclient.proxies.qos.At_Least_Once_1)){
-					subscriptionQos= 1;
-				}else if(QoS.equals(mqttclient.proxies.qos.Exactly_Once_2)){
-					subscriptionQos= 2;
-				}
-				payload.setQos(subscriptionQos);
-				this.client.publish(topic, payload);
 
-				logger.trace("Message published");
-			} catch (Exception e) {
-				logger.error("Unable to publish message to topic: " + topic, e);
-				throw e;
-			}
-		}
+    private static MqttConnection createConnection(BrokerConfig brokerConfig) throws Exception {
 
-		public void reconnect() {
+        MqttConnection handler = null;
+        String key = getKeyForBrokerConfig(brokerConfig);
 
-			int numAttempts = 0;
-			while( numAttempts < 10 && !this.client.isConnected() ) {
-				try {
-					logger.info(String.format("Attempt (%d/10) to re-establish connection to: %s", numAttempts, this.brokerKey));
+        try {
+            handler = new MqttConnection(brokerConfig);
+            synchronized (mqttHandlers) {
+                mqttHandlers.put(key, handler);
+            }
 
-					IMqttToken token = this.client.connectWithResult(this.connectionOpts);
-					token.waitForCompletion();
-					if (this.client.isConnected())
-						logger.info(String.format("Attempt (%d/10) - Re-connected to: %s", numAttempts, this.brokerKey));
+        } catch (Exception e) {
+            MqttConnector.logger.error("Unable to create an MQTT Connection to: "+ key, e);
+            throw e;
+        }
 
-				} catch (MqttException e) {
-					MqttConnector.logger.error(String.format("Attempt (%d/10) - An error occured while reconnecting to: %s", numAttempts, this.brokerKey), e);
-				}
+        return handler;
+    }
 
-				//If we're still not connected wait 2 seconds before trying again
-				finally {
-					numAttempts++;
-					try { 
-						if( !this.client.isConnected() ) Thread.sleep(2000);
-					} catch(InterruptedException e)  { } ; //Ignore this exception
-				}
-			}
+    public static MqttConnection validateAndcreateConnection(BrokerConfig brokerConfig) throws Exception {
 
-			if (!this.client.isConnected())
-			{
-				//logger.error(String.format("Reconnection Failed, quitting after multiple attempts to reconnect to: %s", numAttempts, this.brokerKey));
-				try {
-					Thread.sleep(60000);
-					reconnect();
-				} catch (InterruptedException e) {
-					logger.error(String.format("Thread Interrupted Exception%n%s", ExceptionUtils.getStackTrace(e)));
-				}
-			}
-		}
-	}
-	private static String formatBrokerId(String brokerHost, Long brokerPort, String formatBrokerId, String username ) {
-		return String.format("[H:%s | P:%d | T:%s | U:%s]", brokerHost, brokerPort, formatBrokerId, username);
-	}
+        String key = getKeyForBrokerConfig(brokerConfig);
 
-	public static IMendixObject checkSubscriptionObj(IContext ctx, String brokerHost, Long brokerPort, String topicName) throws CoreException
-	{
-		// Retrieving the subscription object 
-		String xpathConstraint = "//MqttClient.Subscription" +"[Host = '"+ brokerHost +"' and Port = "+ brokerPort  + " and TopicName = '"+ topicName+ "']" ;
-		try {
-			List<IMendixObject> subscriptionObjs = com.mendix.core.Core.retrieveXPathQuery(ctx, xpathConstraint);
-			if(!subscriptionObjs.isEmpty())
-			{
-				return subscriptionObjs.get(0);
-			}
-		} catch (CoreException e) {  
-			throw new CoreException("Could not retrieve QueueInfo objects for Instance Index " + xpathConstraint + " from database.", e);
-		}
-		return null;
-	}
+        //We always delete the existing connection object if existing, recreate the same
+        //and resubscribe to the required topics. This is because the save action from the
+        //UI indicates that there could be possible configuration change.
+        //For Example: Password to connect to the broker is modified.
+        synchronized (mqttHandlers) {
+
+            if(!mqttHandlers.containsKey(key))
+                return createConnection(brokerConfig);
+
+
+            // Deleting the existing connection to recreate the connection object.
+            // This is done to handle updates on broker configuration object.
+            // For example: Password change.
+            deleteConnection(brokerConfig);
+
+            // Creating new connection
+            MqttConnection mqttConnection = createConnection(brokerConfig);
+
+            //Resubscribe to all topics that connection holds responsible to 
+            //since the existing connection was removed and re-established.
+            resubscribe(brokerConfig, mqttConnection);
+
+            return mqttConnection;
+        }
+
+    }
+
+    //This method is responsible to initialize connections and subscribe to configured topics on
+    //app startup.
+    public static MqttConnection initializeConnectionOnStartup(BrokerConfig brokerConfig) throws Exception {
+
+        String key = getKeyForBrokerConfig(brokerConfig);
+        MqttConnector.logger.info(String.format("Initializing connection on startup for the broker: %s", key));
+
+        MqttConnection mqttConnection = createConnection(brokerConfig);
+
+        //Resubscribe to all configured topics.
+        resubscribe(brokerConfig, mqttConnection);
+
+        return mqttConnection;
+
+    }
+
+    public static String getKeyForBrokerConfig (BrokerConfig brokerConfig) {
+        
+        String brokerOrg = Strings.isNullOrEmpty(brokerConfig.getBrokerOrganization()) ? "null" 
+                    : brokerConfig.getBrokerOrganization();
+        String username = Strings.isNullOrEmpty(brokerConfig.getUserName()) ? "null" 
+                    : brokerConfig.getUserName();
+        
+        return brokerConfig.getConfigurationName() + "|" + brokerConfig.getBrokerHost() + "|" + 
+            brokerConfig.getBrokerPort() + "|" + brokerOrg + "|" + username ;
+    }
+
+    protected static class MqttConnection {
+        private MqttClient client;
+        private String brokerKey;
+        private MqttConnectOptions connOpts;
+        private BrokerConfig brokerConfig;
+
+        public MqttConnection(BrokerConfig brokerConfig) throws Exception {
+
+            this.brokerConfig = brokerConfig;
+            this.connOpts = new MqttConnectOptions();
+
+            String clientCertificate = brokerConfig.getClientCertificate();
+            String brokerOrganization = brokerConfig.getBrokerOrganization();
+            String brokerHost = brokerConfig.getBrokerHost();
+            Long brokerPort = brokerConfig.getBrokerPort();
+            String userName = brokerConfig.getUserName();
+            String password = brokerConfig.getPassword();
+            Long connectionTimeout = brokerConfig.getTimeout();
+            String clientKey = brokerConfig.getClientKey();
+            String certificatePassword = brokerConfig.getCertificatePassword();
+            String ca = brokerConfig.getCA();
+            boolean cleanSession = brokerConfig.getCleanSession();
+
+
+            boolean useSsl = (clientCertificate != null && !clientCertificate.equals(""));
+            this.connOpts.setCleanSession(cleanSession);
+            this.connOpts.setAutomaticReconnect(true);
+            if(connectionTimeout != 0)
+                this.connOpts.setConnectionTimeout(Math.toIntExact(connectionTimeout));
+            else
+                this.connOpts.setConnectionTimeout(60);
+            this.connOpts.setKeepAliveInterval(60);
+
+            String brokerURL = "";
+            String clientId = "";
+            if(brokerOrganization != null && !brokerOrganization.equals("")){
+                brokerURL = String.format("tcp://%1s.%2s:%d",brokerOrganization, brokerHost, brokerPort);
+            }
+            else{
+                brokerURL = String.format("tcp://%s:%d", brokerHost, brokerPort);
+            }
+
+            this.brokerKey = getKeyForBrokerConfig(brokerConfig);
+
+            clientId = Base64.getEncoder().encodeToString(this.brokerKey.getBytes());
+            logger.debug("Assigned MQTT Connection client id : " + clientId + " to: " + this.brokerKey);
+
+            if (userName != null && !"".equals(userName.trim())) {
+                this.connOpts.setUserName(userName);
+            }
+            if (password != null && !"".equals(password.trim())) {
+                this.connOpts.setPassword(password.toCharArray());
+            }
+
+            if (useSsl) {
+                brokerURL = String.format("ssl://%s:%d", brokerHost, brokerPort);
+                this.connOpts.setCleanSession(cleanSession);
+
+                try {
+                    String resourcesPath = null;
+                    try {
+                        resourcesPath = Core.getConfiguration().getResourcesPath().getPath();
+                        resourcesPath += File.separator;
+
+                    } catch (Exception e) {
+                        resourcesPath = "";
+                    }
+                    this.connOpts.setSocketFactory(SslUtil.getSslSocketFactory(
+                            resourcesPath + ca,
+                            resourcesPath + clientCertificate,
+                            resourcesPath + clientKey,
+                            certificatePassword
+                            ));
+                } catch (Exception e) {
+                    logger.error(String.format("Unable to load certificates for: " + this.brokerKey), e);
+                    throw e;
+                }
+            }
+
+            MemoryPersistence persistence = new MemoryPersistence();
+
+            try {
+                this.client = new MqttClient(brokerURL, clientId, persistence);
+                this.client.setCallback(new MxMqttCallback(this.brokerKey, this, brokerConfig));
+
+                logger.debug("Connecting to broker: " + brokerURL);
+                IMqttToken token = this.client.connectWithResult(this.connOpts);
+                token.waitForCompletion(connectionTimeout);
+                logger.trace("Connected");
+            } catch (Exception e) {
+                throw e;
+            }
+        }
+
+        public void subscribe(String topic, String onMessageMicroflow, qos qos) throws MqttException {
+            logger.info(String.format("Subscribe: %s", this.client.getClientId()));
+            String onMessage = "On Message Microflow: ";
+            try {
+                if(!this.client.isConnected()){
+                    this.client.reconnect();
+                }
+
+                /* Request the input parameters from the OnMessageMicroflow so we can 
+                 * validate that both 'Topic' & 'Payload' present.
+                 */
+                Map<String, IDataType> params = Core.getInputParameters(onMessageMicroflow);
+                if( !params.containsKey("Topic") && !params.containsKey("Payload") )
+                    logger.warn(onMessage + onMessageMicroflow + " is missing all required parameters [Topic & Payload]");
+                else if( !params.containsKey("Topic") )
+                    logger.warn(onMessage + onMessageMicroflow + " is missing parameter [Topic]");
+                else if( !params.containsKey("Payload") )
+                    logger.warn(onMessage + onMessageMicroflow + " is missing required parameter [Payload]");
+
+                this.client.subscribe(topic, qosValue(qos));
+            } catch (Exception e) {
+                logger.error(e);
+                throw e;
+            }
+
+        }
+
+        public void unsubscribe(String topicName) throws MqttException {
+            logger.info(String.format("Unsubscribe: %s, %s", topicName, this.client.getClientId()));
+            try {
+                this.client.unsubscribe(topicName);
+            } catch (MqttException e) {
+                logger.error(e);
+                throw e;
+            }
+        }
+
+        public void publish(String topic, String message, qos QoS) throws MqttException {
+            logger.debug(String.format("Publish: %s, %s, %s", topic, message, this.client.getClientId()));
+            try {
+                if(!this.client.isConnected()){
+                    this.client.reconnect();
+                }
+
+                MqttMessage payload = new MqttMessage(message.getBytes());
+                payload.setQos(qosValue(QoS));
+                this.client.publish(topic, payload);
+
+                logger.trace("Message published");
+            } catch (Exception e) {
+                logger.error("Unable to publish message to topic: " + topic, e);
+                throw e;
+            }
+        }
+
+        public void reconnect() throws CoreException {
+
+            int numAttempts = 0;
+            String key = getKeyForBrokerConfig(this.brokerConfig);
+            while( numAttempts < 10 && !this.client.isConnected() && canEstabilishReconnection(key)) {
+                try {
+                    MqttConnector.logger.info(String.format("Attempt (%d/10) to re-establish connection to: %s", numAttempts, this.brokerKey));
+
+                    IMqttToken token = this.client.connectWithResult(this.connOpts);
+                    token.waitForCompletion();
+                    if (this.client.isConnected())
+                        MqttConnector.logger.info(String.format("Attempt (%d/10) - Re-connected to: %s", numAttempts, this.brokerKey));
+
+                    //resubscribe to required topics if available.
+                    MqttConnector.resubscribe(this.brokerConfig, this);
+
+                } catch (MqttException e) {
+                    MqttConnector.logger.error(String.format("Attempt (%d/10) - An error occured while reconnecting to: %s", numAttempts, this.brokerKey), e);
+                }
+
+                //If we're still not connected wait 2 seconds before trying again
+                finally {
+                    numAttempts++;
+                    try { 
+                        if( !this.client.isConnected() ) Thread.sleep(2000);
+                    } catch(InterruptedException e)  { } ; //Ignore this exception
+                }
+            }
+
+            if (!this.client.isConnected())
+                MqttConnector.logger.error(String.format("Reconnection Failed, quitting after multiple attempts to reconnect to: %s", numAttempts, this.brokerKey));
+        }
+
+        public MqttClient getClient() {
+            return this.client;
+        }
+
+        private boolean canEstabilishReconnection(String clientKey) {
+
+            /**
+             * There can be a possibility where a broker config can be removed from the configuration. In such cases, 
+             * we need not estabilish reconnection. Let us validate for the configuration existence before establishing
+             * the reconnection.
+             * 
+             * When we delete broker config, we disconnect the client and remove from the map from the method
+             * deleteConnection
+             */
+            synchronized (MqttConnector.mqttHandlers) {
+                if(MqttConnector.mqttHandlers.containsKey(clientKey))
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /**
+     * Get all MQTT configurations with subscribe type and subscription enabled from the
+     * broker config object.
+     * Resubscribe to those topics with this client.
+     * 
+     * @param mqttConnection 
+     * @param brokerConfig 
+     * @throws CoreException 
+     */
+    public static void resubscribe(BrokerConfig brokerConfig, MqttConnection mqttConnection) throws CoreException {
+
+        List<MqttConfig> mqttCfgList = getMqttCfgList(brokerConfig);
+
+        mqttCfgList.forEach(mqttCfg -> {
+            try {
+                mqttConnection.getClient().subscribe(mqttCfg.getTopicName(), qosValue(mqttCfg.getQos()));
+                logger.info("Resubscribed to : " + mqttCfg.getTopicName());
+            } catch (MqttException e) {
+                MqttConnector.logger.error(String.format("Resubscription failed for the configuration: %s, Topic:%s", 
+                        mqttCfg.getConfigurationName(), mqttCfg.getTopicName()));
+            }
+        });
+    }
+
+    private static List<MqttConfig> getMqttCfgList(BrokerConfig brokerConfig) throws CoreException {
+
+        return XPath.create(brokerConfig.getContext(), MqttConfig.class)
+                .subconstraint(MqttConfig.MemberNames.MqttConfig_BrokerConfig, mqttclient.proxies.BrokerConfig.entityName)
+                .eq(XPath.ID, brokerConfig.getMendixObject().getId().toLong())
+                .close()
+                .eq(MqttConfig.MemberNames.PubOrSub, Enum_PubOrSub.Subscribe)
+                .and()
+                .eq(MqttConfig.MemberNames.SubOrUnSub, true)
+                .all();
+
+
+    }
+
+    private static int qosValue(qos qoS)
+    {
+        int subscriptionQos = 0;
+        if(qoS.equals(mqttclient.proxies.qos.At_Most_Once_0)){
+            subscriptionQos = 0;
+        }else if(qoS.equals(mqttclient.proxies.qos.At_Least_Once_1)){
+            subscriptionQos= 1;
+        }else if(qoS.equals(mqttclient.proxies.qos.Exactly_Once_2)){
+            subscriptionQos = 2;
+        }
+        return subscriptionQos;
+    }
+
+
+
 }
