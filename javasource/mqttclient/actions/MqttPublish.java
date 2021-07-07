@@ -9,53 +9,37 @@
 
 package mqttclient.actions;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.mendix.core.Core;
 import com.mendix.systemwideinterfaces.core.IContext;
 import com.mendix.webui.CustomJavaAction;
 import mqttclient.impl.MqttConnector;
+import com.mendix.systemwideinterfaces.core.IMendixObject;
 
 public class MqttPublish extends CustomJavaAction<java.lang.Boolean>
 {
-	private java.lang.String BrokerHost;
-	private java.lang.Long BrokerPort;
-	private java.lang.String BrokerOrganisation;
-	private java.lang.Long Timeout;
-	private java.lang.String Username;
-	private java.lang.String Password;
-	private java.lang.String TopicName;
-	private java.lang.String Payload;
-	private java.lang.String CA;
-	private java.lang.String ClientCertificate;
-	private java.lang.String ClientKey;
-	private java.lang.String CertificatePassword;
-	private mqttclient.proxies.qos QoS;
+	private IMendixObject __MqttConfigObject;
+	private mqttclient.proxies.MqttConfig MqttConfigObject;
+	private java.lang.String payload;
 
-	public MqttPublish(IContext context, java.lang.String BrokerHost, java.lang.Long BrokerPort, java.lang.String BrokerOrganisation, java.lang.Long Timeout, java.lang.String Username, java.lang.String Password, java.lang.String TopicName, java.lang.String Payload, java.lang.String CA, java.lang.String ClientCertificate, java.lang.String ClientKey, java.lang.String CertificatePassword, java.lang.String QoS)
+	public MqttPublish(IContext context, IMendixObject MqttConfigObject, java.lang.String payload)
 	{
 		super(context);
-		this.BrokerHost = BrokerHost;
-		this.BrokerPort = BrokerPort;
-		this.BrokerOrganisation = BrokerOrganisation;
-		this.Timeout = Timeout;
-		this.Username = Username;
-		this.Password = Password;
-		this.TopicName = TopicName;
-		this.Payload = Payload;
-		this.CA = CA;
-		this.ClientCertificate = ClientCertificate;
-		this.ClientKey = ClientKey;
-		this.CertificatePassword = CertificatePassword;
-		this.QoS = QoS == null ? null : mqttclient.proxies.qos.valueOf(QoS);
+		this.__MqttConfigObject = MqttConfigObject;
+		this.payload = payload;
 	}
 
 	@java.lang.Override
 	public java.lang.Boolean executeAction() throws Exception
 	{
+		this.MqttConfigObject = __MqttConfigObject == null ? null : mqttclient.proxies.MqttConfig.initialize(getContext(), __MqttConfigObject);
+
 		// BEGIN USER CODE
 		try {
-        	MqttConnector.publish(this.BrokerHost, this.BrokerPort, this.BrokerOrganisation,this.TopicName, this.Payload, this.CA, this.ClientCertificate, this.ClientKey, this.CertificatePassword, this.Username, this.Password, this.QoS, this.Timeout);
-            return true;
+        	MqttConnector.publish(this.MqttConfigObject, this.MqttConfigObject.getMqttConfig_BrokerConfig(), payload);
+        	return true;
         } catch (Exception e) {
+        	Core.getLogger("MqttConnector").error(ExceptionUtils.getStackTrace(e));
             return false;
         }
 		// END USER CODE

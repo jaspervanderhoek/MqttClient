@@ -19,4 +19,9 @@ public class Constants
 	{
 		return (java.lang.Long)Core.getConfiguration().getConstantValue("MqttClient.BROKER_PORT");
 	}
+
+	public static java.lang.String getLOG_NODE()
+	{
+		return (java.lang.String)Core.getConfiguration().getConstantValue("MqttClient.LOG_NODE");
+	}
 }
